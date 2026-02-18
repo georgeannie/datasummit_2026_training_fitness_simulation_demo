@@ -254,7 +254,7 @@ with left1:
 )
 
 
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, width='stretch')
 
  
 with right1:
@@ -304,7 +304,7 @@ with right1:
     """, unsafe_allow_html=True)
     st.dataframe(
         params_table,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
     st.markdown("Implication: The best plan is usually a reallocation. Chase marginal gains, not total effort.")
@@ -361,7 +361,7 @@ with left2:
         line_color="rgba(255,255,255,0.7)",
         annotation_text="Half-life"
     )
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, width='stretch')
   
 with right2:
     st.markdown("""
@@ -454,7 +454,7 @@ with left3:
         y=wk["risky_week_proxy"] * 100,
         # x=wk_bad["load"],
         # y=[75]*len(wk_bad), 
-       # mode="markers", 
+        mode="markers", 
         marker=dict(
             size=16,
 #            color="#ff4d4d",
@@ -494,7 +494,7 @@ with left3:
     fillcolor="rgba(255, 0, 0, 0.08)",
     line_width=0
 )
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width='stretch')
    
 with right3:
     st.markdown("""
@@ -577,4 +577,4 @@ If you disagree with a curve, you change the belief — then re-evaluate the dec
 </div>
 """, unsafe_allow_html=True)
 with st.expander("Debug: weekly proxy table"):
-    st.dataframe(df_proxy, use_container_width=True)
+    st.dataframe(df_proxy, width='stretch')

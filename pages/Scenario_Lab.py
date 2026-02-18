@@ -8,8 +8,15 @@ from utils.nav import SCENARIO_PAGE, BELIEFS_PAGE, render_top_nav
 from core import (
     get_history_and_beliefs,
     simulate_uncertainty,
+    weighted_load,
+    sigmoid,
     recommend_plan,
 )
+def belief_risk_pct_for_plan(easy, tempo, strength, beliefs):
+    # compute load the same way you do in the beliefs page
+    plan_load = weighted_load(easy, tempo, strength)
+    risk_pct = float(sigmoid(beliefs.risk_slope * (plan_load - beliefs.risk_threshold)) * 100)
+    return plan_load, risk_pct
 
 st.set_page_config(page_title="Scenario Lab — 10K Training", layout="wide")
 render_top_nav(active=SCENARIO_PAGE)
@@ -167,7 +174,7 @@ with c1:
         height=380,
         margin=dict(l=20, r=20, t=60, b=20)
     )
-    st.plotly_chart(fig_dist, use_container_width=True)
+    st.plotly_chart(fig_dist, width='stretch')
 
     st.caption(
         "Interpretation: This is a range of plausible outcomes—not a single prediction. "
@@ -176,7 +183,6 @@ with c1:
 
 with c2:
     st.subheader("Trade-offs & Recommendation")
-
     # Frontier: sample feasible allocations quickly
     rng = np.random.default_rng(202)
     points = []
@@ -197,8 +203,17 @@ with c2:
         )
 
     frontier = pd.DataFrame(points)
+    # Add load + belief risk for each feasible plan
+    frontier["load"] = frontier.apply(lambda r: weighted_load(r.easy, r.tempo, r.strength), axis=1)
+    frontier["belief_risk_pct"] = sigmoid(beliefs.risk_slope * (frontier["load"] - beliefs.risk_threshold)) * 100
 
     rec = recommend_plan(total_min, wk_context, beliefs, risk_posture)
+    # ---- compute belief-calibrated tolerance based on recommended plan ----
+    rec_load, rec_belief_risk_pct = belief_risk_pct_for_plan(rec["easy"], rec["tempo"], 
+                                                             rec["strength"], beliefs)
+
+    # Use belief-derived number as the shading threshold
+    RISK_TOL_PCT = rec_belief_risk_pct
 
     # Current selection point
     e_imp = float(np.mean(imps))
@@ -214,7 +229,7 @@ with c2:
     fig_frontier.add_trace(go.Scatter(
         x=[e_imp], y=[e_risk*100],
         mode="markers", name="Your plan",
-        marker=dict(size=14, symbol="diamond"),
+        marker=dict(size=14, symbol="diamond", color="#ff7f0e"),
         hovertemplate="Your plan<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
     ))
     fig_frontier.add_trace(go.Scatter(
@@ -231,7 +246,41 @@ with c2:
         height=380,
         margin=dict(l=20, r=20, t=60, b=20)
     )
-    st.plotly_chart(fig_frontier, use_container_width=True)
+    fig_frontier.add_hline(
+        y=RISK_TOL_PCT,
+        line_dash="dash",
+        line_width=3,
+        line_color="rgba(180, 0, 0, 0.7)",
+        annotation_text=f"Danger threshold (belief @ load≈{rec_load:.0f})",
+        annotation_position="bottom left",
+        annotation_font_size=14,
+    )
+    # Update feasible plan trace to include richer hover
+    fig_frontier.add_trace(go.Scatter(
+        x=frontier["exp_imp"],
+        y=frontier["exp_risk"] * 100,
+        mode="markers",
+        name="Feasible plans",
+        customdata=np.stack([frontier["load"], frontier["belief_risk_pct"]], axis=1),
+        text=[f"Easy {r.easy} | Tempo {r.tempo} | Strength {r.strength}" for r in frontier.itertuples(index=False)],
+        hovertemplate=(
+            "%{text}"
+            "<br>Expected: %{x:.0f}"
+            "<br>Sim risk: %{y:.1f}%"
+            "<br>Load: %{customdata[0]:.0f}"
+            "<br>Belief risk@load: %{customdata[1]:.1f}%"
+            "<extra></extra>"
+        ),
+        marker=dict(
+            size=9,
+            color=frontier["belief_risk_pct"],      # colorscale by belief risk
+            colorscale="Blues",
+            showscale=False,
+            colorbar=dict(title="Belief<br>risk (%)"),
+            line=dict(width=1.0, color="rgba(0,0,0,0.55)")
+        ),
+    ))
+    st.plotly_chart(fig_frontier, width='stretch')
 
     st.markdown("### Recommended Training Plan")
     st.markdown(f"**Easy:** {rec['easy']} min  \n**Tempo:** {rec['tempo']} min  \n**Strength:** {rec['strength']} min")
@@ -251,9 +300,9 @@ with c2:
 
 # Debug only
 with st.expander("Debug: daily data"):
-    st.dataframe(df_daily, use_container_width=True)
+    st.dataframe(df_daily, width='stretch')
 with st.expander("Debug: weekly proxy"):
-    st.dataframe(df_proxy, use_container_width=True)
+    st.dataframe(df_proxy, width='stretch')
 
 
 
