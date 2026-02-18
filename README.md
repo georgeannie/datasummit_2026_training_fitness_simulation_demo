@@ -1,3 +1,3 @@
-Fitness Planning Demo
-1. Scenario Lab
-2. Planning beliefs
+<h1>Fitness Planning Demo</h1>
+<li>Scenario Lab</li>
+<li>Planning beliefs</li>
