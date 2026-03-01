@@ -134,6 +134,122 @@ df_daily, df_proxy, beliefs = get_history_and_beliefs(seed=11, weeks=6)
 params = beliefs.params
 
 # =============================
+# Belief 2 — Carryover (learned half-life)
+# =============================
+st.subheader("Belief 2 — Training Effects Persist, Then Fade (Carryover & Decay)")
+# st.caption(
+#     "Estimating how much last week’s training still helps this week. In other words, how long fitness carries over.")
+# st.caption("Step 1: Fit a model to weekly training data to estimate carryover coefficient (c).")
+# st.caption(" Carryover Coefficient (c) = This week’s improvement / Last week’s training improvement.") 
+# st.caption("Higher c means last week’s training matters more for this week’s improvement.")
+# st.caption("Step 2: Find the decay of training benefits over time.")
+# st.caption("This tells how long does it take for something that shrinks by a factor of c each week to be cut in half?. For example, a half-life of 1 week means that after 1 week, the training benefit is reduced by half.")
+
+st.caption("We estimate how much last week’s training still helps this week — i.e., how long fitness carries over.")
+
+left2, right2 = st.columns([1.6, 1.0], gap="large")
+with left2:
+    # show decay curve in days using learned half-life in weeks (approx)
+    half_life_days = 7.0 * beliefs.half_life_wks if beliefs.half_life_wks > 0 else 4.0
+    days = np.arange(0, 15, 1)
+    decay = np.exp(-np.log(2) * (days / max(1e-6, half_life_days)))
+
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=days, y=decay, mode="lines", name="Remaining benefit",
+                              line=dict(color="#2E3B8F", width=4))
+    )
+#    fig2.add_vline(x=2, line_dash="dash", annotation_text="~Tue if trained Sun")
+    fig2.add_vline(x=float(half_life_days), line_dash="dash", annotation_text="Half-life (learned)")
+    fig2.update_layout(
+         title=dict(
+            text="Carryover Curve (Benefit Remaining vs Days Since Workout)",
+            x=0.5,
+            xanchor="right",
+            font=dict(size=20)
+        ),
+        xaxis_title="Days since workout",
+        yaxis_title="Remaining benefit (0–1)",
+        height=550,
+        width=350,
+        paper_bgcolor="rgba(0,0,0,0)",   # transparent outer background
+        plot_bgcolor="rgba(0,0,0,0)",    # transparent plot area
+        margin=dict(l=20, r=20, t=60, b=20),
+        showlegend=False,
+    )
+    fig2.add_vline(
+        x=float(half_life_days),
+        line_width=5,
+        line_dash="dash",
+        line_color="rgba(255,255,255,0.7)",
+        annotation_text="Half-life"
+    )
+    st.plotly_chart(fig2, width='stretch')
+  
+with right2:
+    st.markdown("""
+    <div style="
+        background-color: #dae7f5;
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #2E3B8F;
+        color: #1f2937;
+    ">
+    <h4 style="margin-bottom:14px;">Belief Card</h4>
+
+    <p style="font-size: 18px"><strong>Training works over time, not instantly.</strong></p>
+
+    <p style="font-size: 18px">Weekly decisions influence future weeks. Timing matters, not just totals.</p>
+
+    <p style="font-size: 18px; opacity: 0.8; margin-top: 12px;">
+    <b>Model Parameter: </b
+    <strong><b>Carryover (c)</b></strong> — controls how long effects persist.
+    </p>
+
+    </div>
+    """, unsafe_allow_html=True)
+
+   # st.subheader("Carryover — how long benefits last")
+
+    c1, c2 = st.columns(2, gap="large")
+
+    belief_metric(
+        c1,
+        title="Weekly benefit retained",
+        value="4%",
+        delta="Fades quickly",
+        delta_color="inverse",
+#        delta_arrow="off",
+        info_md="""
+    Fraction of last week's training benefit that persists into the next week.
+    Low values mean benefits must be reinforced consistently.
+   
+**How retention is measured**  
+Observe how performance-related signals change after a training week, then measure how much of that improvement remains when training load drops.
+
+**Decision implication**  
+Missing a week costs more than slightly under-training in a week.
+    """
+    )
+
+    belief_metric(
+        c2,
+        title="Half-life of benefit",
+        value="0.21 weeks",
+        delta="~1–2 days",
+        delta_color="normal",
+   #     delta_arrow="auto",
+        info_md="""
+    Time until 50% of remaining benefit decays.
+    Short half-life implies timing matters more than volume.
+    """
+    )
+    st.markdown(
+    "Implication: Missing a week costs more than missing a single workout."
+)
+
+st.markdown("---")
+
+# =============================
 # Belief 1 — Diminishing returns (learned response curves)
 # =============================
 st.subheader("Belief 1 — More Training Helps, Until It Doesn’t (Diminishing Returns)")
@@ -311,121 +427,6 @@ with right1:
 
 st.markdown("---")
 
-# =============================
-# Belief 2 — Carryover (learned half-life)
-# =============================
-st.subheader("Belief 2 — Training Effects Persist, Then Fade (Carryover & Decay)")
-# st.caption(
-#     "Estimating how much last week’s training still helps this week. In other words, how long fitness carries over.")
-# st.caption("Step 1: Fit a model to weekly training data to estimate carryover coefficient (c).")
-# st.caption(" Carryover Coefficient (c) = This week’s improvement / Last week’s training improvement.") 
-# st.caption("Higher c means last week’s training matters more for this week’s improvement.")
-# st.caption("Step 2: Find the decay of training benefits over time.")
-# st.caption("This tells how long does it take for something that shrinks by a factor of c each week to be cut in half?. For example, a half-life of 1 week means that after 1 week, the training benefit is reduced by half.")
-
-st.caption("We estimate how much last week’s training still helps this week — i.e., how long fitness carries over.")
-
-left2, right2 = st.columns([1.6, 1.0], gap="large")
-with left2:
-    # show decay curve in days using learned half-life in weeks (approx)
-    half_life_days = 7.0 * beliefs.half_life_wks if beliefs.half_life_wks > 0 else 4.0
-    days = np.arange(0, 15, 1)
-    decay = np.exp(-np.log(2) * (days / max(1e-6, half_life_days)))
-
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=days, y=decay, mode="lines", name="Remaining benefit",
-                              line=dict(color="#2E3B8F", width=4))
-    )
-#    fig2.add_vline(x=2, line_dash="dash", annotation_text="~Tue if trained Sun")
-    fig2.add_vline(x=float(half_life_days), line_dash="dash", annotation_text="Half-life (learned)")
-    fig2.update_layout(
-         title=dict(
-            text="Carryover Curve (Benefit Remaining vs Days Since Workout)",
-            x=0.5,
-            xanchor="right",
-            font=dict(size=20)
-        ),
-        xaxis_title="Days since workout",
-        yaxis_title="Remaining benefit (0–1)",
-        height=550,
-        width=350,
-        paper_bgcolor="rgba(0,0,0,0)",   # transparent outer background
-        plot_bgcolor="rgba(0,0,0,0)",    # transparent plot area
-        margin=dict(l=20, r=20, t=60, b=20),
-        showlegend=False,
-    )
-    fig2.add_vline(
-        x=float(half_life_days),
-        line_width=5,
-        line_dash="dash",
-        line_color="rgba(255,255,255,0.7)",
-        annotation_text="Half-life"
-    )
-    st.plotly_chart(fig2, width='stretch')
-  
-with right2:
-    st.markdown("""
-    <div style="
-        background-color: #dae7f5;
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 5px solid #2E3B8F;
-        color: #1f2937;
-    ">
-    <h4 style="margin-bottom:14px;">Belief Card</h4>
-
-    <p style="font-size: 18px"><strong>Training works over time, not instantly.</strong></p>
-
-    <p style="font-size: 18px">Weekly decisions influence future weeks. Timing matters, not just totals.</p>
-
-    <p style="font-size: 18px; opacity: 0.8; margin-top: 12px;">
-    <b>Model Parameter: </b
-    <strong><b>Carryover (c)</b></strong> — controls how long effects persist.
-    </p>
-
-    </div>
-    """, unsafe_allow_html=True)
-
-   # st.subheader("Carryover — how long benefits last")
-
-    c1, c2 = st.columns(2, gap="large")
-
-    belief_metric(
-        c1,
-        title="Weekly benefit retained",
-        value="4%",
-        delta="Fades quickly",
-        delta_color="inverse",
-#        delta_arrow="off",
-        info_md="""
-    Fraction of last week's training benefit that persists into the next week.
-    Low values mean benefits must be reinforced consistently.
-   
-**How retention is measured**  
-Observe how performance-related signals change after a training week, then measure how much of that improvement remains when training load drops.
-
-**Decision implication**  
-Missing a week costs more than slightly under-training in a week.
-    """
-    )
-
-    belief_metric(
-        c2,
-        title="Half-life of benefit",
-        value="0.21 weeks",
-        delta="~1–2 days",
-        delta_color="normal",
-   #     delta_arrow="auto",
-        info_md="""
-    Time until 50% of remaining benefit decays.
-    Short half-life implies timing matters more than volume.
-    """
-    )
-    st.markdown(
-    "Implication: Missing a week costs more than missing a single workout."
-)
-
-st.markdown("---")
 
 # =============================
 # Belief 3 — Risk threshold (learned)
