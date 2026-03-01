@@ -134,9 +134,9 @@ df_daily, df_proxy, beliefs = get_history_and_beliefs(seed=11, weeks=6)
 params = beliefs.params
 
 # =============================
-# Belief 2 — Carryover (learned half-life)
+# Belief 1 — Carryover (learned half-life)
 # =============================
-st.subheader("Belief 2 — Training Effects Persist, Then Fade (Carryover & Decay)")
+st.subheader("Belief 1 — Training Effects Persist, Then Fade (Carryover & Decay)")
 # st.caption(
 #     "Estimating how much last week’s training still helps this week. In other words, how long fitness carries over.")
 # st.caption("Step 1: Fit a model to weekly training data to estimate carryover coefficient (c).")
@@ -250,9 +250,9 @@ Missing a week costs more than slightly under-training in a week.
 st.markdown("---")
 
 # =============================
-# Belief 1 — Diminishing returns (learned response curves)
+# Belief 2 — Diminishing returns (learned response curves)
 # =============================
-st.subheader("Belief 1 — More Training Helps, Until It Doesn’t (Diminishing Returns)")
+st.subheader("Belief 2 — More Training Helps, Until It Doesn’t (Diminishing Returns)")
 
 left1, right1 = st.columns([1.6, 1.0], gap="large")
 with left1:
