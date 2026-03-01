@@ -163,7 +163,7 @@ with left2:
     fig2.update_layout(
          title=dict(
             text="Carryover Curve (Benefit Remaining vs Days Since Workout)",
-            x=0.5,
+            x=1.0,
             xanchor="right",
             font=dict(size=20)
         ),
