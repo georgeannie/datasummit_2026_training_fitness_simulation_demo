@@ -74,6 +74,6 @@ st.markdown("---")
 # Optional: One tight “closing loop” line that sets up your narrative arc
 st.markdown(
     """
-### Together, it’s a reusable pattern for resource allocation under uncertainty.”
+### Together, it's a reusable pattern for resource allocation under uncertainty.
 """
 )

@@ -12,18 +12,61 @@ from core import (
     sigmoid,
     recommend_plan,
 )
+
+AXIS_TITLE_FONT_SIZE = 22
+AXIS_TICK_FONT_SIZE = 16
+PERCENTILE_ANNOTATION_FONT_SIZE = 18
+PERCENTILE_LINE_WIDTH = 3
+
+
+def style_plot_axes(fig: go.Figure) -> None:
+    fig.update_xaxes(
+        showgrid=False,
+        title_font=dict(size=AXIS_TITLE_FONT_SIZE),
+        tickfont=dict(size=AXIS_TICK_FONT_SIZE),
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        title_font=dict(size=AXIS_TITLE_FONT_SIZE),
+        tickfont=dict(size=AXIS_TICK_FONT_SIZE),
+    )
+
+
 def belief_risk_pct_for_plan(easy, tempo, strength, beliefs):
     # compute load the same way you do in the beliefs page
     plan_load = weighted_load(easy, tempo, strength)
     risk_pct = float(sigmoid(beliefs.risk_slope * (plan_load - beliefs.risk_threshold)) * 100)
     return plan_load, risk_pct
 
-st.set_page_config(page_title="Scenario Lab — 10K Training", layout="wide")
 render_top_nav(active=SCENARIO_PAGE)
 st.title("Scenario Lab — 10K Training Allocation Under Uncertainty")
 
+# st.markdown(
+#     "**Decision:** Given limited time, how should I allocate training next week to improve performance while managing injury risk?"
+# )
+
 st.markdown(
-    "**Decision:** Given limited time, how should I allocate training next week to improve performance while managing injury risk?"
+    """
+    <style>
+    div[data-testid="stMetricLabel"] p {
+        font-size: 1.3rem !important;
+        font-weight: 600 !important;
+        line-height: 1.5 !important;
+    }
+
+    div[data-testid="stMetricValue"] {
+        font-size: 2.2rem !important;
+        font-weight: 600 !important;
+        line-height: 1.1 !important;
+    }
+
+    div[data-testid="stMetricDelta"] {
+        font-size: 1.0rem !important;
+        font-weight: 400 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 df_daily, df_proxy, beliefs = get_history_and_beliefs(seed=11, weeks=6)
@@ -67,24 +110,25 @@ consistency_state = consistency_label(missed_total)
 st.subheader("What we know so far")
 k1, k2, k3, k4 = st.columns(4, gap="large")
 
-k1.metric("Consistency (last 6 weeks)", consistency_state, f"{missed_total} missed days", border=True)
-k2.metric("Recovery trend (last week)", recovery_state, f"Soreness {avg_soreness_last:.1f} | Sleep {avg_sleep_last:.1f}h", border=True)
-k3.metric("Last week disruptions", f"{missed_last} missed", "This affects uncertainty", border=True, delta_color="off")
-k4.metric("Baseline soreness (14d)", f"{baseline_soreness_14d:.1f}",
-        "Used for guardrails", border=True, delta_color="off", 
-        help="""**What this represents** 
-Baseline soreness is a rolling measure of accumulated training stress. This baseline represents your **sustainable operating level**.
+top_kpi_cards = [
+    ("Consistency (last 6 weeks)", consistency_state, f"{missed_total} missed days"),
+    ("Recovery trend (last week)", recovery_state, f"Soreness {avg_soreness_last:.1f} | Sleep {avg_sleep_last:.1f}h"),
+    ("Last week disruptions", f"{missed_last} missed", "This affects uncertainty"),
+    ("Baseline soreness (14d)", f"{baseline_soreness_14d:.1f}", "Used for guardrails"),
+]
 
-It reflects:
-- Recent training load (harder weeks increase it)
-- Recovery quality (sleep reduces it)
-- Carryover from previous days
-
-When soreness stays above baseline for multiple days:
-- Stress is accumulating faster than recovery
-- Risk compounds even if performance looks good
-"""
-)
+for col, (label, value, detail) in zip([k1, k2, k3, k4], top_kpi_cards):
+    col.markdown(
+        f"""
+        <div style=\"border:2px solid #1622a3; border-radius:0.55rem; padding:0.9rem 0.9rem 0.8rem; min-height:145px;\">
+            <div style=\"font-size:1.15rem; font-weight:600; line-height:1.3; margin-bottom:0.35rem;\">{label}</div>
+            <div style=\"font-size:2.1rem; font-weight:800; line-height:1.0; margin-bottom:0.45rem;\">{value}</div>
+            <div style=\"font-size:1.0rem; font-weight:500; opacity:0.82; line-height:1.35;\">{detail}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+st.markdown("---")
 
 # =========================
 # TOP ROW: Sliders (move controls up)
@@ -93,6 +137,26 @@ st.subheader("Set next week's constraints")
 s1, s2, s3, s4 = st.columns([1.2, 1.3, 1.3, 1.2], gap="large")
 
 with s1:
+    st.markdown("""
+    <style>
+    /* --- Slider label (the text "Total time (minutes)") --- */
+    div[data-testid="stSlider"] > label p {
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+        line-height: 1.1 !important;
+    }
+
+    div[data-testid="stSlider"] [data-testid="stTickBar"] {
+        transform: scaleY(1.15);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    def _min_to_hm(m: int) -> str:
+        h, mm = divmod(int(m), 60)
+        return f"{h}h {mm:02d}m" if h else f"{mm}m"
+
+    # Slider
     total_min = st.slider(
         "Total time (minutes)",
         min_value=120,
@@ -100,53 +164,85 @@ with s1:
         value=300,
         step=10
     )
-    st.caption("Capacity is fixed. Decisions are allocations.")
 
+    st.markdown(
+        f"""
+        <div style="
+            font-size: 1.7rem;
+            font-weight: 400;
+            margin-top: -0.2rem;
+            margin-bottom: 0.6rem;
+            ">
+            {total_min} min <span style="font-size: 1.4rem; font-weight: 700; opacity: 0.75;">
+            ({_min_to_hm(total_min)})
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 with s2:
     easy_min = st.slider("Easy minutes", 0, total_min, int(0.60 * total_min), 10)
+    st.markdown(
+        f"""
+        <div style="
+            font-size: 1.7rem;
+            font-weight: 400;
+            margin-top: -0.2rem;
+            margin-bottom: 0.6rem;
+            ">
+            {easy_min} min <span style="font-size: 1.4rem; font-weight: 700; opacity: 0.75;">
+            ({_min_to_hm(easy_min)})
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 with s3:
     remaining = total_min - easy_min
-    tempo_min = st.slider("Moderate/Tempo minutes", 0, remaining, int(0.30 * total_min), 10)
+    tempo_min = st.slider("Interval minutes", 0, remaining, int(0.30 * total_min), 10)
+    st.markdown(
+        f"""
+        <div style="
+            font-size: 1.7rem;
+            font-weight: 400;
+            margin-top: -0.2rem;
+            margin-bottom: 0.6rem;
+            ">
+            {tempo_min} min <span style="font-size: 1.4rem; font-weight: 700; opacity: 0.75;">
+            ({_min_to_hm(tempo_min)})
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     strength_min = total_min - easy_min - tempo_min
-    st.caption(f"Strength minutes (auto): **{strength_min}**")
-
+ 
+    
 with s4:
     risk_posture = st.slider(
         "Risk posture",
         0.0, 1.0, 0.35, 0.05,
         help="0 = conservative, 1 = aggressive"
     )
-    st.caption("Controls tolerance for downside outcomes.")
+    st.markdown(
+        f"""
+        <div style="
+            font-size: 1.7rem;
+            font-weight: 400;
+            margin-top: -0.2rem;
+            margin-bottom: 0.6rem;
+            ">
+            {risk_posture} <span style="font-size: 1.4rem; font-weight: 700; opacity: 0.75;">
+            ({"Aggressive" if risk_posture >= 0.5 else "Conservative"})
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.markdown("---")
-#c1, c2, c3 = st.columns([1.1, 1.4, 1.5], gap="large")
 
-# with c1:
-#     st.subheader("Inputs")
-
-#     total_min = st.slider(
-#         "Total training time next week (minutes)",
-#         min_value=120, max_value=480, value=300, step=10
-#     )
-#     st.caption("Capacity is fixed. Optimization happens within constraints.")
-
-#     st.markdown("### Allocate minutes")
-#     easy_min = st.slider("Easy", 0, total_min, int(0.60 * total_min), 10)
-#     remaining = total_min - easy_min
-#     tempo_min = st.slider("Tempo", 0, remaining, int(0.30 * total_min), 10)
-#     strength_min = total_min - easy_min - tempo_min
-#     st.write(f"**Strength:** {strength_min} min (auto)")
-
-#     risk_posture = st.slider("Risk posture (Conservative → Aggressive)", 0.0, 1.0, 0.35, 0.05)
-#     st.caption("Controls tolerance for downside outcomes.")
-
-#     st.markdown("---")
-#     st.markdown("### Context (last 6 weeks)")
-#     st.write(f"- Weeks observed: **{df_proxy.shape[0]}**")
-#     st.write(f"- Last-week avg soreness: **{wk_context['avg_soreness']:.2f}**")
-#     st.write(f"- Last-week avg sleep: **{wk_context['avg_sleep']:.2f} hrs**")
-#     st.write(f"- Baseline soreness (14d): **{baseline_soreness:.2f}**")
 c1, c2 = st.columns([2, 2], gap="large")
 
 with c1:
@@ -157,156 +253,231 @@ with c1:
     e_risk = float(np.mean(risks))
 
     kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Expected Improvement (P50)", f"{p50:,.0f}")
-    kpi2.metric("Downside (P10)", f"{p10:,.0f}")
-    kpi3.metric("Injury Risk (avg)", f"{100*e_risk:,.1f}%")
+    kpi_cards = [
+        ("Typical Outcome (P50)", f"{p50:,.0f}"),
+        ("Bad-week Outcome (P10)", f"{p10:,.0f}"),
+        ("Chance of breaking down", f"{100*e_risk:,.1f}%"),
+    ]
+
+    for col, (label, value) in zip([kpi1, kpi2, kpi3], kpi_cards):
+        col.markdown(
+            f"""
+                <div style=\"font-size:1.2rem; font-weight:600; line-height:1.25; margin-bottom:0.35rem;\">{label}</div>
+                <div style=\"font-size:2.0rem; font-weight:800; line-height:1.0;\">{value}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     hist_y, hist_x = np.histogram(imps, bins=35)
     fig_dist = go.Figure()
     fig_dist.add_trace(go.Bar(x=hist_x[:-1], y=hist_y, name="Simulated outcomes"))
     for val, name in [(p10, "P10"), (p50, "P50"), (p90, "P90")]:
-        fig_dist.add_vline(x=float(val), line_width=2, line_dash="dash", annotation_text=name)
+        fig_dist.add_vline(
+            x=float(val),
+            line_width=PERCENTILE_LINE_WIDTH,
+            line_dash="dash",
+            annotation_text=name,
+            annotation_font_size=PERCENTILE_ANNOTATION_FONT_SIZE,
+        )
 
     fig_dist.update_layout(
-        title="Expected Performance Impact (Next 2–3 Weeks)",
+        title=dict(
+            text="Expected Performance Impact (Next 2–3 Weeks)",
+            xanchor="left",
+            x=0.0,
+            font=dict(size=24)
+        ),
         xaxis_title="Improvement score (unitless)",
         yaxis_title="Simulation count",
+        paper_bgcolor="rgba(0,0,0,0)",   # transparent outer background
+        plot_bgcolor="rgba(0,0,0,0)",    # transparent plot area
         height=380,
         margin=dict(l=20, r=20, t=60, b=20)
     )
-    st.plotly_chart(fig_dist, width='stretch')
+    style_plot_axes(fig_dist)
+    st.plotly_chart(fig_dist, width='stretch',
+                    config={
+        "displayModeBar": False,   # hides the toolbar entirely
+        "scrollZoom": False,
+        "doubleClick": "reset",
+        "displaylogo": False
+    })
 
-    st.caption(
-        "Interpretation: This is a range of plausible outcomes—not a single prediction. "
-        "The width of the distribution is the uncertainty."
-    )
+    # st.caption(
+    #     "Interpretation: This is a range of plausible outcomes—not a single prediction. "
+    #     "The width of the distribution is the uncertainty."
+    # )
 
 with c2:
     st.subheader("Trade-offs & Recommendation")
-    # Frontier: sample feasible allocations quickly
-    rng = np.random.default_rng(202)
-    points = []
-    for _ in range(40):
-        tempo = int(rng.integers(low=0, high=int(0.45 * total_min) + 1))
-        strength = int(rng.integers(low=int(0.05 * total_min), high=int(0.25 * total_min) + 1))
-        easy = total_min - tempo - strength
-        if easy < 0:
-            continue
+    show_tradeoff_chart = st.toggle("Show tradeoff chart", value=False)
 
-        imps_s, risks_s = simulate_uncertainty(
-            easy, tempo, strength, wk_context, beliefs, n=700, seed=int(rng.integers(1, 1_000_000))
+    if show_tradeoff_chart:
+        with st.spinner("Building trade-off frontier and recommended plan..."):
+            # Frontier: sample feasible allocations quickly
+            rng = np.random.default_rng(202)
+            points = []
+            n_frontier_samples = 40
+            for _ in range(n_frontier_samples):
+                tempo = int(rng.integers(low=0, high=int(0.45 * total_min) + 1))
+                strength = int(rng.integers(low=int(0.05 * total_min), high=int(0.25 * total_min) + 1))
+                easy = total_min - tempo - strength
+                if easy < 0:
+                    continue
+
+                imps_s, risks_s = simulate_uncertainty(
+                    easy, tempo, strength, wk_context, beliefs, n=700, seed=int(rng.integers(1, 1_000_000))
+                )
+                points.append(
+                    dict(easy=easy, tempo=tempo, strength=strength,
+                         exp_imp=float(np.mean(imps_s)),
+                         exp_risk=float(np.mean(risks_s)))
+                )
+
+            frontier = pd.DataFrame(points)
+            # Add load + belief risk for each feasible plan
+            frontier["load"] = frontier.apply(lambda r: weighted_load(r.easy, r.tempo, r.strength), axis=1)
+            frontier["belief_risk_pct"] = sigmoid(beliefs.risk_slope * (frontier["load"] - beliefs.risk_threshold)) * 100
+
+            rec = recommend_plan(total_min, wk_context, beliefs, risk_posture)
+            # ---- compute belief-calibrated tolerance based on recommended plan ----
+            rec_load, rec_belief_risk_pct = belief_risk_pct_for_plan(rec["easy"], rec["tempo"],
+                                                                     rec["strength"], beliefs)
+
+            # Use belief-derived number as the shading threshold
+            RISK_TOL_PCT = rec_belief_risk_pct
+
+            # Current selection point
+            e_imp = float(np.mean(imps))
+            e_risk = float(np.mean(risks))
+
+            fig_frontier = go.Figure()
+
+            fig_frontier.update_layout(
+                title="Performance vs Injury Risk Trade-off",
+                xaxis_title="Expected improvement (mean)",
+                yaxis_title="Injury risk proxy (%)",
+                paper_bgcolor="rgba(0,0,0,0)",   # transparent outer background
+                plot_bgcolor="rgba(0,0,0,0)",    # transparent plot area
+                height=380,
+                margin=dict(l=20, r=20, t=60, b=20)
+            )
+            fig_frontier.add_hline(
+                y=RISK_TOL_PCT,
+                line_dash="dash",
+                line_width=3,
+                line_color="rgba(180, 0, 0, 0.7)",
+                annotation_text=f"Danger threshold (belief @ load≈{rec_load:.0f})",
+                annotation_position="top left",
+                annotation_font_size=20,
+                annotation_font_color="rgba(180, 0, 0, 0.9)"
+            )
+            # Update feasible plan trace to include richer hover
+            fig_frontier.add_trace(go.Scatter(
+                x=frontier["exp_imp"],
+                y=frontier["exp_risk"] * 100,
+                mode="markers",
+                name="Feasible plans",
+                customdata=np.stack([frontier["load"], frontier["belief_risk_pct"]], axis=1),
+                text=[f"Easy {r.easy} | Interval {r.tempo} | Strength {r.strength}" for r in frontier.itertuples(index=False)],
+                hovertemplate=(
+                    "%{text}"
+                    "<br>Expected: %{x:.0f}"
+                    "<br>Sim risk: %{y:.1f}%"
+                    "<br>Load: %{customdata[0]:.0f}"
+                    "<br>Belief risk@load: %{customdata[1]:.1f}%"
+                    "<extra></extra>"
+                ),
+                marker=dict(
+                    size=9,
+                    color="#7DD3FC",
+                    opacity=0.45,
+                    showscale=False,
+                    colorbar=dict(title="Belief<br>risk (%)"),
+                    line=dict(width=1.0, color="rgba(0,0,0,0.8)")
+                ),
+            ))
+            fig_frontier.add_trace(go.Scatter(
+                x=[e_imp], y=[e_risk*100],
+                mode="markers+text", name="Current",
+                text=["Current"],
+                textposition="top center",
+                textfont=dict(size=14, color="#06613e"),
+                marker=dict(size=16, symbol="diamond", color="#06613e"),
+                hovertemplate="Current<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
+            ))
+            fig_frontier.add_trace(go.Scatter(
+                x=[rec["e_imp"]], y=[rec["e_risk"]*100],
+                mode="markers+text", name="Recommended",
+                text=["Recommended"],
+                textposition="top center",
+                textfont=dict(size=14, color="#EB3604"),
+                marker=dict(size=18, symbol="star", color="#EB3604"),
+                hovertemplate="Recommended<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
+            ))
+            style_plot_axes(fig_frontier)
+        st.plotly_chart(fig_frontier, width='stretch',
+                        config={
+            "displayModeBar": False,   # hides the toolbar entirely
+            "scrollZoom": False,
+            "doubleClick": "reset",
+            "displaylogo": False
+        })
+
+        st.markdown("### Recommended Training Plan")
+        st.markdown(
+            f"""
+            <div style=\"font-size:1.2rem; line-height:1.7;\">
+                <strong>Easy:</strong> {rec['easy']} min<br>
+                <strong>Interval:</strong> {rec['tempo']} min<br>
+                <strong>Strength:</strong> {rec['strength']} min
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        points.append(
-            dict(easy=easy, tempo=tempo, strength=strength,
-                 exp_imp=float(np.mean(imps_s)),
-                 exp_risk=float(np.mean(risks_s)))
+
+        st.markdown(
+            "<div style=\"font-size:1.2rem; font-weight:700; margin-top:0.5rem;\">Why this plan</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <div style=\"font-size:1.1rem; line-height:1.7;\">
+                <ul style=\"margin-top:0.4rem;\">
+                    <li>Robust across plausible futures (optimizes risk-adjusted outcome)</li>
+                    <li>Avoids the high-injury tail while keeping strong expected gains</li>
+                </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-    frontier = pd.DataFrame(points)
-    # Add load + belief risk for each feasible plan
-    frontier["load"] = frontier.apply(lambda r: weighted_load(r.easy, r.tempo, r.strength), axis=1)
-    frontier["belief_risk_pct"] = sigmoid(beliefs.risk_slope * (frontier["load"] - beliefs.risk_threshold)) * 100
+        st.markdown(
+            "<div style=\"font-size:1.2rem; font-weight:700; margin-top:0.5rem;\">Guardrail</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <div style=\"font-size:1.1rem; line-height:1.7;\">
+                Reduce <strong>tempo by 20%</strong> if soreness stays above <strong>{baseline_soreness:.1f}</strong> for <strong>2 consecutive days</strong>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    rec = recommend_plan(total_min, wk_context, beliefs, risk_posture)
-    # ---- compute belief-calibrated tolerance based on recommended plan ----
-    rec_load, rec_belief_risk_pct = belief_risk_pct_for_plan(rec["easy"], rec["tempo"], 
-                                                             rec["strength"], beliefs)
-
-    # Use belief-derived number as the shading threshold
-    RISK_TOL_PCT = rec_belief_risk_pct
-
-    # Current selection point
-    e_imp = float(np.mean(imps))
-    e_risk = float(np.mean(risks))
-
-    fig_frontier = go.Figure()
-    fig_frontier.add_trace(go.Scatter(
-        x=frontier["exp_imp"], y=frontier["exp_risk"] * 100,
-        mode="markers", name="Feasible plans",
-        text=[f"Easy {r.easy} | Tempo {r.tempo} | Strength {r.strength}" for r in frontier.itertuples(index=False)],
-        hovertemplate="%{text}<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
-    ))
-    fig_frontier.add_trace(go.Scatter(
-        x=[e_imp], y=[e_risk*100],
-        mode="markers", name="Your plan",
-        marker=dict(size=14, symbol="diamond", color="#ff7f0e"),
-        hovertemplate="Your plan<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
-    ))
-    fig_frontier.add_trace(go.Scatter(
-        x=[rec["e_imp"]], y=[rec["e_risk"]*100],
-        mode="markers", name="Recommended",
-        marker=dict(size=16, symbol="star"),
-        hovertemplate="Recommended<br>Expected: %{x:.0f}<br>Risk: %{y:.1f}%<extra></extra>"
-    ))
-
-    fig_frontier.update_layout(
-        title="Performance vs Injury Risk Trade-off",
-        xaxis_title="Expected improvement (mean)",
-        yaxis_title="Injury risk proxy (%)",
-        height=380,
-        margin=dict(l=20, r=20, t=60, b=20)
-    )
-    fig_frontier.add_hline(
-        y=RISK_TOL_PCT,
-        line_dash="dash",
-        line_width=3,
-        line_color="rgba(180, 0, 0, 0.7)",
-        annotation_text=f"Danger threshold (belief @ load≈{rec_load:.0f})",
-        annotation_position="bottom left",
-        annotation_font_size=14,
-    )
-    # Update feasible plan trace to include richer hover
-    fig_frontier.add_trace(go.Scatter(
-        x=frontier["exp_imp"],
-        y=frontier["exp_risk"] * 100,
-        mode="markers",
-        name="Feasible plans",
-        customdata=np.stack([frontier["load"], frontier["belief_risk_pct"]], axis=1),
-        text=[f"Easy {r.easy} | Tempo {r.tempo} | Strength {r.strength}" for r in frontier.itertuples(index=False)],
-        hovertemplate=(
-            "%{text}"
-            "<br>Expected: %{x:.0f}"
-            "<br>Sim risk: %{y:.1f}%"
-            "<br>Load: %{customdata[0]:.0f}"
-            "<br>Belief risk@load: %{customdata[1]:.1f}%"
-            "<extra></extra>"
-        ),
-        marker=dict(
-            size=9,
-            color=frontier["belief_risk_pct"],      # colorscale by belief risk
-            colorscale="Blues",
-            showscale=False,
-            colorbar=dict(title="Belief<br>risk (%)"),
-            line=dict(width=1.0, color="rgba(0,0,0,0.55)")
-        ),
-    ))
-    st.plotly_chart(fig_frontier, width='stretch')
-
-    st.markdown("### Recommended Training Plan")
-    st.markdown(f"**Easy:** {rec['easy']} min  \n**Tempo:** {rec['tempo']} min  \n**Strength:** {rec['strength']} min")
-
-    st.markdown("**Why this plan**")
-    st.markdown(
-        "- Robust across plausible futures (optimizes risk-adjusted outcome)\n"
-        "- Avoids the high-injury tail while keeping strong expected gains"
-    )
-
-    st.markdown("**Guardrail**")
-    st.markdown(
-        f"Reduce **tempo by 20%** if soreness stays above **{baseline_soreness:.1f}** for **2 consecutive days**."
-    )
-
-    st.caption("Interpretation: This is not the best plan—it’s the most robust one.")
+        st.markdown(
+            "<div style=\"font-size:1rem; margin-top:0.4rem; opacity:0.85;\">Interpretation: This is not the best plan-it's the most robust one.</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("Trade-off chart and recommendation are hidden.")
 
 # Debug only
 with st.expander("Debug: daily data"):
     st.dataframe(df_daily, width='stretch')
 with st.expander("Debug: weekly proxy"):
     st.dataframe(df_proxy, width='stretch')
-
-
-
-
 
 # # scenario_lab.py
 # import math
@@ -593,7 +764,7 @@ with st.expander("Debug: weekly proxy"):
 #         height=380,
 #         margin=dict(l=20, r=20, t=60, b=20)
 #     )
-#     st.plotly_chart(fig_dist, use_container_width=True)
+#     st.plotly_chart(fig_dist, width='stretch')
 
 #     st.caption(
 #         "Interpretation: This is a range of plausible outcomes—not a single prediction. "
@@ -674,7 +845,7 @@ with st.expander("Debug: weekly proxy"):
 #         height=380,
 #         margin=dict(l=20, r=20, t=60, b=20)
 #     )
-#     st.plotly_chart(fig_frontier, use_container_width=True)
+#     st.plotly_chart(fig_frontier, width='stretch')
 
 #     # Decision card (the climax)
 #     st.markdown("### Recommended Training Plan")
@@ -704,7 +875,7 @@ with st.expander("Debug: weekly proxy"):
 # # Optional: show generated data (for you, not for the talk)
 # # -----------------------------
 # with st.expander("Show generated daily data (debug only)"):
-#     st.dataframe(df_daily, use_container_width=True)
+#     st.dataframe(df_daily, width='stretch')
 
 # with st.expander("Show weekly aggregation (debug only)"):
-#     st.dataframe(df_weekly, use_container_width=True)
+#     st.dataframe(df_weekly, width='stretch')
