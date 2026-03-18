@@ -2,12 +2,11 @@
 import math
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 import numpy as np
 import pandas as pd
 import streamlit as st
-
 
 # =========================
 # 1) Shared parameters
@@ -293,32 +292,182 @@ def simulate_uncertainty(
     return np.array(imps), np.array(risks)
 
 
-def recommend_plan(total_min: int, wk_context: Dict, beliefs: Beliefs, risk_posture: float) -> Dict:
+#def recommend_plan(total_min: int, wk_context: Dict, beliefs: Beliefs, risk_posture: float) -> Dict:
+
+# def recommend_plan(
+#     total_min: int,
+#     wk_context: Dict,
+#     beliefs: "Beliefs",
+#     risk_posture: float,
+#     risk_limit_pct: float,
+#     fixed_strength: int = 40,          # NEW
+#     step: int = 10,                    # optional
+#     n_sims: int = 700,                 # optional (speed)
+#     seed: int = 123                    # optional
+# ) -> Optional[Dict]:
+#     """
+#     Grid search with:
+#       - fixed strength minutes
+#       - hard risk constraint: E[risk]% <= risk_limit_pct
+#       - utility = E[improvement] - lambda * E[risk]
+#     """
+#     if fixed_strength < 0 or fixed_strength > total_min:
+#         return None
+
+#     remaining = total_min - fixed_strength
+#     lam = float(np.interp(risk_posture, [0.0, 1.0], [140.0, 40.0]))
+
+#     best = None
+
+#     # Search only over easy/tempo; strength is fixed
+#     for easy in range(0, remaining + 1, step):
+#         for tempo in range(0, remaining - easy + 1, step):
+#             strength = fixed_strength
+
+#             # Keep your tempo cap; choose whether it should be relative to total or remaining
+#             if tempo > 0.45 * total_min:
+#                 continue
+
+#             imps, risks = simulate_uncertainty(
+#                 easy, tempo, strength, wk_context, beliefs,
+#                 n=n_sims, seed=seed
+#             )
+#             e_imp = float(np.mean(imps))
+#             e_risk = float(np.mean(risks))          # 0..1
+
+#             # Hard constraint (same unit as KPI "chance of breaking down")
+#             if e_risk * 100.0 > risk_limit_pct:
+#                 continue
+
+#             utility = e_imp - lam * e_risk
+
+#             if best is None or utility > best["utility"]:
+#                 best = dict(
+#                     easy=easy, tempo=tempo, strength=strength,
+#                     e_imp=e_imp, e_risk=e_risk, utility=utility
+#                 )
+
+#     return best
+from typing import Dict, Optional, List
+import numpy as np
+
+
+def enumerate_candidate_plans(
+    total_min: int,
+    fixed_strength: int = 40,
+    step: int = 10,
+    min_easy_min: int = 60,
+) -> List[Dict]:
     """
-    Grid search with risk-adjusted utility:
-      utility = E[improvement] - lambda * E[risk]
+    Build all valid plans where:
+        easy + tempo + fixed_strength = total_min
+        easy >= min_easy_min
+        tempo >= 0
     """
-    lam = float(np.interp(risk_posture, [0, 1], [140.0, 40.0]))
-    step = 10
+    if fixed_strength < 0 or fixed_strength > total_min:
+        return []
 
-    best = None
-    for easy in range(0, total_min + 1, step):
-        for tempo in range(0, total_min - easy + 1, step):
-            strength = total_min - easy - tempo
+    remaining = total_min - fixed_strength
+    if remaining <= 0:
+        return []
 
-            if tempo > 0.45 * total_min:
-                continue
-            if strength < 0.05 * total_min:
-                continue
+    min_easy = min(min_easy_min, remaining)
+    tempo_max = max(0, remaining - min_easy)
 
-            imps, risks = simulate_uncertainty(easy, tempo, strength, wk_context, beliefs, n=900, seed=123)
-            e_imp = float(np.mean(imps))
-            e_risk = float(np.mean(risks))
-            utility = e_imp - lam * e_risk
+    candidates = []
+    for tempo in range(0, tempo_max + 1, step):
+        easy = remaining - tempo
+        if easy < min_easy:
+            continue
 
-            if best is None or utility > best["utility"]:
-                best = dict(
-                    easy=easy, tempo=tempo, strength=strength,
-                    e_imp=e_imp, e_risk=e_risk, utility=utility
-                )
-    return best
+        candidates.append(
+            {
+                "easy": int(easy),
+                "tempo": int(tempo),
+                "strength": int(fixed_strength),
+            }
+        )
+
+    return candidates
+
+
+def recommend_plan(
+    total_min: int,
+    wk_context: Dict,
+    beliefs,
+    risk_posture: float,
+    risk_limit_pct: float,
+    fixed_strength: int = 40,
+    step: int = 10,
+    n_sims: int = 700,
+    seed: int = 123,
+    min_easy_min: int = 60,
+) -> Optional[Dict]:
+    """
+    Returns the best recommendation under the requested risk limit when possible.
+    If that limit is impossible, returns the lowest-risk plan instead.
+
+    Output includes:
+      - constraint_met: whether requested risk limit was satisfied
+      - risk_limit_requested_pct
+      - risk_limit_used_pct
+      - fallback_used
+    """
+    candidates = enumerate_candidate_plans(
+        total_min=total_min,
+        fixed_strength=fixed_strength,
+        step=step,
+        min_easy_min=min_easy_min,
+    )
+
+    if not candidates:
+        return None
+
+    lam = float(np.interp(risk_posture, [0.0, 1.0], [140.0, 40.0]))
+    rng = np.random.default_rng(seed)
+
+    evaluated = []
+    for cand in candidates:
+        imps, risks = simulate_uncertainty(
+            cand["easy"],
+            cand["tempo"],
+            cand["strength"],
+            wk_context,
+            beliefs,
+            n=n_sims,
+            seed=int(rng.integers(1, 1_000_000)),
+        )
+
+        e_imp = float(np.mean(imps))
+        e_risk = float(np.mean(risks))          # 0..1
+        e_risk_pct = e_risk * 100.0
+        utility = e_imp - lam * e_risk
+
+        evaluated.append(
+            {
+                **cand,
+                "e_imp": e_imp,
+                "e_risk": e_risk,
+                "e_risk_pct": e_risk_pct,
+                "utility": utility,
+            }
+        )
+
+    feasible = [x for x in evaluated if x["e_risk_pct"] <= risk_limit_pct]
+
+    if feasible:
+        best = max(feasible, key=lambda x: x["utility"])
+        best["constraint_met"] = True
+        best["fallback_used"] = False
+        best["risk_limit_requested_pct"] = float(risk_limit_pct)
+        best["risk_limit_used_pct"] = float(risk_limit_pct)
+        return best
+
+    # fallback: always return the minimum-risk plan
+    # tie-breaker: among same-risk plans, prefer higher expected improvement
+    fallback = min(evaluated, key=lambda x: (x["e_risk_pct"], -x["e_imp"]))
+    fallback["constraint_met"] = False
+    fallback["fallback_used"] = True
+    fallback["risk_limit_requested_pct"] = float(risk_limit_pct)
+    fallback["risk_limit_used_pct"] = float(fallback["e_risk_pct"]) + 0.1
+    return fallback

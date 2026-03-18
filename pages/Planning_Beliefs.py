@@ -33,10 +33,10 @@ def style_plot_axes(fig: go.Figure) -> None:
     )
 
 
-@st.dialog("Details")
-def show_info_dialog(title: str, info_md: str) -> None:
-    st.markdown(f"### {title}")
-    st.markdown(info_md)
+# @st.dialog("Details")
+# def show_info_dialog(title: str, info_md: str) -> None:
+#     st.markdown(f"### {title}")
+#     st.markdown(info_md)
 
 
 def _info_key(title: str) -> str:
@@ -53,16 +53,19 @@ def belief_metric(col, title, value, delta=None, delta_color=None,
             border: 2px solid #2E3B8F !important;
             border-radius: 15px !important;
             background: #f8fafc !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            box-shadow: 1 4px 10px rgba(0,0,0,0.06);
+            div[data-testid="stMetricValue"] > div {
+                font-size: 50px; /* Adjust this value */
+            }
             </style>
             """, unsafe_allow_html=True)
             st.markdown(
-                f'<div style="font-size:21px; font-weight:600; line-height:1.2; margin:0 3rem 0.6rem 0;">{title}</div>',
+                f'<div style="font-size:22px; font-weight:600; line-height:1.2; margin:0 3rem 0.6rem 0;">{title}</div>',
                 unsafe_allow_html=True,
             )
-            if info_md:
-                if st.button("❔", key=f"info_{_info_key(title)}", help="More information"):
-                    show_info_dialog(title, info_md)
+            # if info_md:
+            #     if st.button("❔", key=f"info_{_info_key(title)}", help="More information"):
+            #         show_info_dialog(title, info_md)
 
             st.metric(
                 label="Consistency",
@@ -160,9 +163,9 @@ st.markdown(PRESENTATION_CSS, unsafe_allow_html=True)
 render_top_nav(active=BELIEFS_PAGE)
 st.title("Planning Beliefs — Learned from 6 Weeks of Training")
 
-st.markdown(
-    "**Purpose:** Make assumptions explicit **and learned from history** — so we can challenge them, test them, and update them."
-)
+# st.markdown(
+#     "**Purpose:** Make assumptions explicit **and learned from history** — so we can challenge them, test them, and update them."
+# )
 df_daily, df_proxy, beliefs = get_history_and_beliefs(seed=11, weeks=6)
 params = beliefs.params
 
@@ -178,7 +181,7 @@ st.subheader("Belief 1 — Training Effects Persist, Then Fade (Carryover & Deca
 # st.caption("Step 2: Find the decay of training benefits over time.")
 # st.caption("This tells how long does it take for something that shrinks by a factor of c each week to be cut in half?. For example, a half-life of 1 week means that after 1 week, the training benefit is reduced by half.")
 
-st.caption("We estimate how much last week’s training still helps this week — i.e., how long fitness carries over.")
+#st.caption("We estimate how much last week’s training still helps this week — i.e., how long fitness carries over.")
 
 left2, right2 = st.columns([1.6, 1.0], gap="large")
 with left2:
@@ -215,16 +218,16 @@ with left2:
     )
     fig2.add_annotation(
         x=float(half_life_days),
-        y=0.52,
+        y=0.6,
         xref="x", yref="y",
         text="Half-life: benefit drops to 50% here",
         showarrow=True,
         arrowhead=2,
-        ax=140, ay=-20,
-        font=dict(size=16, color="rgba(17,24,39,0.95)"),
+        ax=140, ay=-100,
+        font=dict(size=22, color="rgba(50,24,39,0.95)"),
         bgcolor="rgba(255,255,255,0.92)",
-        bordercolor="rgba(17,24,39,0.20)",
-        borderwidth=1
+        #bordercolor="rgba(17,24,39,0.20)",
+        #borderwidth=1
     )
 
     # Reference markers (Day 1 and Day 7)
@@ -232,10 +235,10 @@ with left2:
         x=[day1, day7],
         y=[y_day1, y_day7],
         mode="markers+text",
-        marker=dict(size=10, color="rgba(46,59,143,0.55)", line=dict(width=1.2, color="rgba(17,24,39,0.55)")),
+        marker=dict(size=16, color="rgba(46,59,143,0.8)", line=dict(width=1.2, color="rgba(17,24,39,0.55)")),
         text=[f"Day 1: {y_day1:.0%}", f"Day 7: {y_day7:.0%}"],
         textposition=["top center", "top center"],
-        textfont=dict(size=18,  color="rgba(150,24,19,0.95)"),
+        textfont=dict(size=25,  color="rgba(150,24,19,0.95)"),
         hovertemplate="Day %{x}<br>Benefit left: %{y:.0%}<extra></extra>",
         showlegend=False
     ))
@@ -248,15 +251,15 @@ with left2:
             font=dict(size=26)
         ),
         # Plain-language subtitle (under title)
-        annotations=fig2.layout.annotations + (
-            go.layout.Annotation(
-                x=-0.12, y=1.1, xref="paper", yref="paper",
-                text="How much the last workout still helps as days pass",
-                showarrow=False,
-                font=dict(size=18, color="rgba(17,24,39,0.9)"),
-                align="left"
-            ),
-        ),
+        # annotations=fig2.layout.annotations + (
+        #     go.layout.Annotation(
+        #         x=-0.12, y=1.1, xref="paper", yref="paper",
+        #         #text="How much the last workout still helps as days pass",
+        #         showarrow=False,
+        #         font=dict(size=18, color="rgba(17,24,39,0.9)"),
+        #         align="left"
+        #     ),
+        # ),
         xaxis_title="Days since workout",
         yaxis_title="Benefit left (%)",
         height=520,
@@ -293,12 +296,12 @@ with right2:
         border-left: 5px solid #2E3B8F;
         color: #111827;
     ">
-      <h4 style="margin-bottom:14px;">Belief Card</h4>
+      <h4 style="margin-bottom:14px; font-size:26px">Belief Card</h4>
 
-      <p style="font-size: 18px; margin:0 0 8px 0;"><strong>Training works over time, not instantly.</strong></p>
-      <p style="font-size: 18px; margin:0 0 12px 0;">What you do this week still helps next week—but it fades.</p>
+      <p style="font-size: 23px; font-weight: 2; margin:0 0 8px 0;"><strong>Training works over time, not instantly.</strong></p>
+      <p style="font-size: 23px; margin:0 0 12px 0;">What you do this week still helps next week—but it fades.</p>
 
-      <p style="font-size: 18px; opacity: 0.85; margin:0;">
+      <p style="font-size: 24px; opacity: 0.85; margin:0;">
         <strong>Carryover (c)</strong> — controls how long effects persist.
       </p>
     </div>
@@ -310,7 +313,6 @@ with right2:
     belief_metric(
         c1,
         title="Benefit left after 7 days",
-       #font=dict(size=20),
         value=f"{y_day7:.0%}",
         delta="Fades quickly",
         delta_color="inverse",
@@ -327,7 +329,7 @@ If benefits fade fast, consistency matters more than one heroic week.
     half_life_days_display = float(half_life_days)
     belief_metric(
         c2,
-        title="Half-life of benefit",
+        title="Half-life of benefit   ",
         value=f"{half_life_days_display:.1f} days",
         delta="~1–2 days" if half_life_days_display <= 2.0 else "Fades over days",
         delta_color="normal",
@@ -340,7 +342,7 @@ Short half-life means timing and spacing matter more than total volume.
 """
     )
 
-    st.markdown("**Implication:** consistency beats single heroic days.")
+ #   st.markdown("**Implication:** consistency beats single heroic days.")
 
 st.markdown("---")
 
@@ -486,10 +488,10 @@ with left1:
         legend=dict(
             orientation="v",
             yanchor="bottom",
-            y=0.85,
+            y=0.75,
             xanchor="right",
-            font=dict(size=16),
-            x=0.15
+            font=dict(size=23),
+            x=0.2
         ),
     )
 
@@ -528,34 +530,78 @@ with right1:
 
     st.markdown("""
         <div style="
-            background-color: #dae7f5;
+            background-color: #eae7f5;
             padding: 20px;
             border-radius: 12px;
-            border-left: 5px solid #2E3B8F;
+            border-left: 5px solid #6902c4;
             color: #111827;
         ">
-        <h4 style="margin-bottom:10px;">Belief Card</h4>
-        <p style="font-size: 18px; margin:0 0 8px 0;"><strong>Not all training minutes are equal.</strong></p>
-        <p style="font-size: 18px; margin:0;">Early minutes buy the most lift. After a point, extra time adds less benefit.</p>
+        <h4 style="margin-bottom:12px;font-size:26">Belief Card</h4>
+        <p style="font-size: 23px; margin:0 0 8px 0;"><strong>Not all training minutes are equal.</strong></p>
+        <p style="font-size: 23px; margin:0;">Early minutes buy the most lift. After a point, extra time adds less benefit.</p>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""<p style="font-size: 18px; opacity: 0.7; margin-top:10px;">What the data reinforces</p>""",
-                unsafe_allow_html=True)
+    # st.markdown("""<p style="font-size: 18px; opacity: 0.7; margin-top:10px;">What the data reinforces</p>""",
+    #             unsafe_allow_html=True)
 
     # Best if you need larger font styling
+    st.markdown(" ")
     styled = (
-        params_table.style
-        .set_properties(**{"font-size": "18px", "font-weight":"20"})
-        .set_table_styles([
-            {"selector": "th", "props": [("font-size", "18px"),("font-weight", "bold"), ("background-color", "rgba(46,59,156,0.8)"), ("color", "white")]},
-            {"selector": "td", "props": [("border-color", "rgba(17,24,139,0.1)")]},
-        ])
-    )
+    params_table.style
+    .set_properties(**{
+        "font-size": "21px",
+        "font-weight": "600",
+        "text-align": "left"
+    })
+    .set_table_styles([
+        {
+            "selector": "table",
+            "props": [
+                ("font-size", "21px"),
+                ("border-collapse", "collapse"),
+                ("width", "100%"),
+            ],
+        },
+        {
+            "selector": "th",
+            "props": [
+                ("font-size", "21px"),
+                ("font-weight", "1000"),
+                ("background-color", "#e8e1ee"),
+                ("color", "white"),
+                ("padding", "10px 10px"),
+                ("text-align", "right"),
+            ],
+        },
+        {
+            "selector": "td",
+            "props": [
+                ("font-size", "21px"),
+                ("font-weight", "600"),
+                ("padding", "10px 40px"),
+                ("border-color", "grey"),
+                  ("text-align", "right"),
+            ],
+        },
+        {
+            "selector": "tbody th",
+            "props": [
+                ("font-size", "21px"),
+                ("font-weight", "700"),
+                ("background-color", "white"),
+                ("color", "white"),
+                ("padding", "18px 16px"),
+                  ("text-align", "right"),
+            ],
+        },
+    ])
+    .hide(axis="index")
+)
 
-    st.table(styled.hide(axis="index"))
+    st.markdown(styled.to_html(), unsafe_allow_html=True)
 
-    st.markdown("**Implication:** reallocate minutes toward the highest marginal lift—don’t just add more time.")
+   # st.markdown("**Implication:** reallocate minutes toward the highest marginal lift—don’t just add more time.")
 st.markdown("---")
 
 
@@ -662,8 +708,8 @@ with left3:
         arrowwidth=2,
         arrowcolor="rgba(17,24,39,0.75)",
         ax=40,
-        ay=-30,
-        font=dict(size=14, color="rgba(17,24,39,0.95)"),
+        ay=-40,
+        font=dict(size=24, color="rgba(17,24,39,0.95)"),
         bgcolor="rgba(255,255,255,0.90)",
         bordercolor="rgba(17,24,39,0.25)",
         borderwidth=1
@@ -677,7 +723,7 @@ with left3:
         yref="y",
         text="Danger zone",
         showarrow=False,
-        font=dict(size=14, color="rgba(217,48,37,0.75)")
+        font=dict(size=25, color="rgba(217,48,37,0.75)")
     )
 
     # --- 3) Apply axis ranges + light grid + clean layout ----------------------------
@@ -690,6 +736,14 @@ with left3:
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=30, r=20, t=60, b=40),
+        legend=dict(
+            font=dict(size=23),
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=0.4
+    ),
     )
 
     style_plot_axes(fig3)
@@ -705,16 +759,16 @@ with left3:
 with right3:
     st.markdown("""
     <div style="
-        background-color: #dae7f5;
+        background-color: #f5e5e4;
         padding: 20px;
         border-radius: 12px;
-        border-left: 5px solid #2E3B8F;
+        border-left: 2px solid #f7463b;
         color: #1f2937;
     ">
-    <h4 style="margin:0 0 10px 0;">Belief Card</h4>
-      <p style="font-size:18px; margin:0 0 8px 0;"><strong>Risk has a tipping point.</strong></p>
-      <p style="font-size:18px; margin:0 0 10px 0;">Past a threshold, bad weeks jump. Guardrails matter.</p>
-      <p style="font-size:18px; margin:0;"><strong>Threshold</strong> — where risk starts rising fast</p>
+    <h4 style="margin:0 0 10px 0; font-size:26px">Belief Card</h4>
+      <p style="font-size:23px; margin:0 0 8px 0;"><strong>Risk has a tipping point.</strong></p>
+      <p style="font-size:23px; margin:0 0 10px 0;">Past a threshold, bad weeks jump. Guardrails matter.</p>
+      <p style="font-size:23px; margin:0;"><strong>Threshold</strong> — where risk starts rising fast</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -754,7 +808,7 @@ with right3:
     """
     )
 
-    st.markdown("Implication: optimize for robustness, not just the best average plan.")
+   #st.markdown("Implication: optimize for robustness, not just the best average plan.")
 st.markdown("---")
 
 st.subheader("How This Connects Back to Scenario Lab")
