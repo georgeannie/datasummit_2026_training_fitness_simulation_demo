@@ -26,3 +26,4 @@ def render_top_nav(active: str):
         if st.button("Assumptions", use_container_width=True, disabled=(active == BELIEFS_PAGE)):
             st.query_params.update({"view": "beliefs"})
             _switch(BELIEFS_PAGE)
+            
