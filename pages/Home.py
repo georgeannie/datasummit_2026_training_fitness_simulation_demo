@@ -12,7 +12,7 @@ with left:
     st.markdown(
         """
 **Start with Scenario Lab** to make a weekly training allocation under uncertainty.  
-Then jump to **Planning Beliefs** to explain *why* the recommendation was reasonable — and when it would change.
+Then jump to **Assumptions** to explain *why* the recommendation was reasonable — and when it would change.
 """
     )
 
@@ -33,7 +33,7 @@ Then jump to **Planning Beliefs** to explain *why* the recommendation was reason
 #             st.query_params.update({"view": "scenario"})
 #             render_top_nav(SCENARIO_PAGE)
 #     with q2:
-#         if st.button("▶ View Planning Beliefs", use_container_width=True):
+#         if st.button("▶ View Assumption", use_container_width=True):
 #             st.query_params.update({"view": "beliefs"})
 #             render_top_nav(BELIEFS_PAGE)
 st.markdown("---")
@@ -59,13 +59,13 @@ with f2:
     st.markdown("### Step 2 — Explain the decision")
     st.markdown(
         """
-**Page:** Planning Beliefs  
+**Page:** Assumptions  
 **Goal:** Show the *3 beliefs* that make the recommendation rational.  
 **Beliefs:** **Diminishing returns**, **carryover**, **risk threshold**.  
 **Output:** “Why this plan” + “When it would change.”
 """
     )
-    if st.button("Go to Step 2 → Planning Beliefs", use_container_width=True):
+    if st.button("Go to Step 2 → Assumptions", use_container_width=True):
        # st.query_params.update({"view": "beliefs"})
         _switch(BELIEFS_PAGE)
 
