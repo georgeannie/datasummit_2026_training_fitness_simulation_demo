@@ -114,12 +114,12 @@ st.markdown("""
   <div style="font-size:48px; font-weight:800; color:#1A1A1A; line-height:1.1;">
     What the Model Believes
   </div>
-  <p style="font-size:24px; color:#6B7280; max-width:800px; line-height:1.5; margin-top:12px;">
-    Three assumptions power Scenario Lab. Each is learned from 6 weeks of history.
-    Each has a business parallel.
-  </p>
-</div>
+
 """, unsafe_allow_html=True)
+#   <p style="font-size:24px; color:#6B7280; max-width:800px; line-height:1.5; margin-top:12px;">
+#     Three assumptions power Scenario Lab. Each is learned from 6 weeks of history.
+#   </p>
+# </div>
 
 st.markdown(f"""
 <div style="
