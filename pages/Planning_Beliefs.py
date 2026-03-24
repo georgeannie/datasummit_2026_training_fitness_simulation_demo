@@ -188,7 +188,7 @@ with right2:
     insight_card(
         bg="#EFF6FF", border=C_BLUE, label_color=C_BLUE, dark_color="#1E40AF",
         plain="Benefits fade fast. By day 7, almost nothing remains.",
-        business='<strong>In business:</strong> Any investment — a campaign, a restock, a new hire — keeps working after you stop. But the dashboard only measures this week. So slow-build investments look like they\'re not working when they are.',
+        business='<strong>In business:</strong> Any investment — a campaign, a restock, a new hire — keeps working after you stop.',
         so_what="Three consistent weeks beat one heroic week.")
     c1, c2 = st.columns(2, gap="medium")
     with c1:
@@ -275,7 +275,7 @@ with right1:
     insight_card(
         bg="#F3EEFF", border=C_PURPLE, label_color=C_PURPLE, dark_color="#5B21B6",
         plain="Not all minutes are equal. Interval flattens earliest.",
-        business='<strong>In business:</strong> Your top performer — whether it\'s a channel, a product, or a team — may already be on the flat part of the curve. The next unit of investment there barely moves the needle. The underperformer with room to grow gets more from the same resource.',
+        business='<strong>In business:</strong> Your top performer — whether it\'s a channel, a product, or a team — may already be on the flat part of the curve. The next unit of investment there barely moves the needle.',
         so_what='Don\'t add more. Move what you have.')
     params_table = pd.DataFrame([
         {"Lever": "Easy", "Max lift": int(round(float(params["easy"]["alpha"]))),
@@ -366,7 +366,7 @@ with right3:
     insight_card(
         bg="#FEF2F2", border=C_RED, label_color=C_RED, dark_color="#991B1B",
         plain="Past a threshold, bad weeks spike — fast.",
-        business='<strong>In business:</strong> Any system — a warehouse, a team, a budget — absorbs pressure up to a point. Past that point, one disruption cascades. The failure isn\'t gradual. It\'s sudden.',
+        business='<strong>In business:</strong> Any system — a warehouse, a team, a budget — absorbs pressure up to a point. Past that point, one disruption cascades.',
         so_what="Best plan isn't highest return. It's the one that holds up.")
     m1, m2 = st.columns(2, gap="medium")
     with m1:
