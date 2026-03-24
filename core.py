@@ -7,6 +7,7 @@ from typing import Dict, Tuple, Optional
 import numpy as np
 import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
 
 # =========================
 # 1) Shared parameters
@@ -113,7 +114,6 @@ def fit_alpha_k(df_wk: pd.DataFrame, carryover: float = 0.0, seed: int = 202) ->
         k: dict(alpha=BASE_PRIOR[k]["alpha"], k=BASE_PRIOR[k]["k"], h=DEFAULT_H[k])
         for k in BASE_PRIOR
     }
-    print(prior)
     def sample_params():
         p = {}
         for key in ["easy", "moderate_run_comfort_pace", "strength"]:
@@ -180,7 +180,25 @@ def estimate_risk_threshold(df_wk: pd.DataFrame) -> Dict:
                 best = {"nll": float(nll), "threshold": float(thr), "slope": float(slope)}
     return best
 
+def build_risk_curve_df(df_wk: pd.DataFrame, threshold: float, slope: float, n_points: int = 200) -> pd.DataFrame:
+    """
+    Build a smooth fitted probability curve for:
+        weekly load -> predicted bad-week probability
+    """
+    wk = df_wk.copy()
+    wk["load"] = weighted_load(
+        wk["easy_min"],
+        wk["moderate_run_comfort_pace_min"],
+        wk["strength_min"]
+    )
 
+    x_grid = np.linspace(wk["load"].min(), wk["load"].max(), n_points)
+    y_prob = sigmoid(slope * (x_grid - threshold)) * 100.0  # convert to %
+
+    return pd.DataFrame({
+        "load": x_grid,
+        "bad_week_prob_pct": y_prob
+    })
 # =========================
 # 5) Beliefs bundle
 # =========================
@@ -471,3 +489,5 @@ def recommend_plan(
     fallback["risk_limit_requested_pct"] = float(risk_limit_pct)
     fallback["risk_limit_used_pct"] = float(fallback["e_risk_pct"]) + 0.1
     return fallback
+
+

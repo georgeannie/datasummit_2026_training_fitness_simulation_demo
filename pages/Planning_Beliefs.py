@@ -8,7 +8,17 @@ from core import (
     get_history_and_beliefs, sat_gain, sigmoid, weighted_load,
     DEFAULT_H, CARRYOVER_MULTIPLIER, BASE_PRIOR
 )
-
+def build_risk_curve_df(wk: pd.DataFrame, threshold: float, slope: float, n_points: int = 200) -> pd.DataFrame:
+    """
+    Build a smooth fitted probability curve from:
+        weekly load -> predicted bad-week probability
+    """
+    x_grid = np.linspace(wk["load"].min(), wk["load"].max(), n_points)
+    y_prob = sigmoid(slope * (x_grid - threshold)) * 100.0  # convert to %
+    return pd.DataFrame({
+        "load": x_grid,
+        "bad_week_prob_pct": y_prob,
+    })
 # ── Chart sizing for projector in lit room ──
 AXIS_TITLE_FONT_SIZE = 28
 AXIS_TICK_FONT_SIZE = 22
@@ -37,6 +47,82 @@ def style_plot_axes(fig):
     fig.update_yaxes(showgrid=False, title_font=dict(size=AXIS_TITLE_FONT_SIZE),
                      tickfont=dict(size=AXIS_TICK_FONT_SIZE))
 
+
+def plot_risk_threshold_chart(df_wk: pd.DataFrame, beliefs):
+    wk = df_wk.copy()
+    wk["load"] = weighted_load(
+        wk["easy_min"],
+        wk["moderate_run_comfort_pace_min"],
+        wk["strength_min"]
+    )
+    wk["risky_week"] = ((wk["avg_soreness"] >= 5.2) | (wk["missed_days"] >= 1)).astype(int)
+
+    # scatter points shown at 0% / 100% for visual clarity
+    wk["bad_week_chance_pct"] = wk["risky_week"] * 100.0
+
+    curve_df = build_risk_curve_df(
+        df_wk=wk,
+        threshold=beliefs.risk_threshold,
+        slope=beliefs.risk_slope,
+        n_points=200,
+    )
+
+    fig = go.Figure()
+
+    # stable weeks
+    stable = wk[wk["risky_week"] == 0]
+    fig.add_trace(go.Scatter(
+        x=stable["load"],
+        y=stable["bad_week_chance_pct"],
+        mode="markers",
+        name="Stable weeks",
+        marker=dict(size=10, color="#5B8DEF"),
+    ))
+
+    # bad weeks
+    bad = wk[wk["risky_week"] == 1]
+    fig.add_trace(go.Scatter(
+        x=bad["load"],
+        y=bad["bad_week_chance_pct"],
+        mode="markers",
+        name="Bad weeks",
+        marker=dict(size=10, color="#EF4444"),
+    ))
+
+    # fitted probability curve
+    fig.add_trace(go.Scatter(
+        x=curve_df["load"],
+        y=curve_df["bad_week_prob_pct"],
+        mode="lines",
+        name="Fitted bad-week probability",
+        line=dict(width=4, color="#111827"),
+    ))
+
+    # threshold line
+    fig.add_vline(
+        x=beliefs.risk_threshold,
+        line_width=3,
+        line_dash="dash",
+        line_color="#374151",
+    )
+
+    # danger zone shading
+    fig.add_vrect(
+        x0=beliefs.risk_threshold,
+        x1=float(curve_df["load"].max()),
+        fillcolor="rgba(239, 68, 68, 0.10)",
+        line_width=0,
+    )
+
+    fig.update_layout(
+        xaxis_title="Weekly load (minutes)",
+        yaxis_title="Bad-week chance (%)",
+        yaxis=dict(range=[0, 100]),
+        template="simple_white",
+        height=500,
+    )
+
+    return fig
 
 def insight_card(bg, border, label_color, dark_color, plain, business, so_what):
     st.markdown(f"""
@@ -309,6 +395,7 @@ assumption_header(3, C_RED, "Risk Has a Tipping Point",
 
 left3, right3 = st.columns([1.6, 1.0], gap="large")
 
+
 with left3:
     fig3 = go.Figure()
     wk = df_proxy.copy()
@@ -334,6 +421,20 @@ with left3:
     xpad = max(100, 0.08 * (xmax - xmin))
     xrng = [xmin - xpad, xmax + xpad]
 
+    curve_df = build_risk_curve_df(
+    wk=wk,
+    threshold=float(beliefs.risk_threshold),
+    slope=float(beliefs.risk_slope),
+    n_points=200,
+)
+    fig3.add_trace(go.Scatter(
+        x=curve_df["load"],
+        y=curve_df["bad_week_prob_pct"],
+        mode="lines",
+        name="Fitted bad-week probability",
+        line=dict(color="rgba(17,24,39,0.95)", width=6),
+        hovertemplate="Load %{x:.0f} min<br>Predicted bad-week chance: %{y:.1f}%<extra></extra>",
+    ))
     fig3.add_vrect(x0=thr, x1=xrng[1], fillcolor="rgba(230,0,0,0.08)",
                    line_width=0, layer="below")
     fig3.add_vline(x=thr, line_dash="dash", line_width=5,
@@ -356,8 +457,19 @@ with left3:
         xaxis_title="Weekly load (minutes)", yaxis_title="Bad-week chance (%)",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         height=CHART_HEIGHT, margin=dict(l=35, r=20, t=65, b=55),
-        legend=dict(font=dict(size=26), orientation="h", yanchor="bottom",
-                    y=1.02, xanchor="right", x=0.4))
+       legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.06,
+            xanchor="left",
+            x=-0.1,
+            font=dict(size=22),
+            bgcolor="rgba(0,0,0,0)",
+            # traceorder="normal",
+            # itemsizing="constant",
+            # itemwidth=120,
+        )
+    )
     style_plot_axes(fig3)
     st.plotly_chart(fig3, use_container_width=True,
                     config={"displayModeBar": False, "scrollZoom": False, "displaylogo": False})
