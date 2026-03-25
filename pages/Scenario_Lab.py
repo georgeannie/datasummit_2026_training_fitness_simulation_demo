@@ -419,8 +419,8 @@ with c2:
                 x=[e_imp], y=[e_risk_pct],
                 mode="markers+text", name="Current",
                 text=["Current"], textposition="top center",
-                textfont=dict(size=MARKER_CURRENT, color=C_GREEN),
-                marker=dict(size=MARKER_CURRENT, symbol="diamond", color=C_GREEN),
+                textfont=dict(size=MARKER_CURRENT, color=C_RED),
+                marker=dict(size=MARKER_CURRENT, symbol="diamond", color=C_RED),
                 hovertemplate="Current<br>Expected: %{x:.0f}<br>Breakdown risk: %{y:.1f}%<extra></extra>"))
 
             # Recommended plan
@@ -428,8 +428,8 @@ with c2:
                 x=[rec["e_imp"]], y=[rec["e_risk_pct"]],
                 mode="markers+text", name="Recommended",
                 text=["Recommended"], textposition="top center",
-                textfont=dict(size=MARKER_REC, color=C_RED),
-                marker=dict(size=MARKER_REC, symbol="star", color=C_RED),
+                textfont=dict(size=MARKER_REC, color=C_GREEN),
+                marker=dict(size=MARKER_REC, symbol="star", color=C_GREEN),
                 hovertemplate="Recommended<br>Expected: %{x:.0f}<br>Breakdown risk: %{y:.1f}%<extra></extra>"))
 
             fig_frontier.update_layout(
