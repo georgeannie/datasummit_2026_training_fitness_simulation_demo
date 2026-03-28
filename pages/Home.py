@@ -47,7 +47,7 @@ with f1:
     st.markdown(
         """
 **Page:** Scenario Lab  
-**Goal:** Choose an allocation across **Easy / Tempo / Strength** under a time constraint.  
+**Goal:** Choose an allocation across **Easy / Interval / Strength** under a time constraint.  
 **Output:** A recommended plan + guardrails, based on a **distribution of outcomes**.
 """
     )
